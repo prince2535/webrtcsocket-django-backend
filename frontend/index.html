@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Django WebRTC Chat</title>
+
+  <style>
+    body {
+      background: #111;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+
+    .videos {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    video {
+      width: 45%;
+      height: 300px;
+      background: black;
+      border-radius: 10px;
+    }
+
+    /* ✅ Mirror ONLY local video (self-view) */
+    #localVideo {
+      transform: scaleX(-1);
+    }
+
+    /* ✅ Remote video must stay real orientation */
+    #remoteVideo {
+      transform: scaleX(1);
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>Django WebRTC Video Chat</h2>
+
+<div class="videos">
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+</div>
+
+<button onclick="start()">Start</button>
+<button onclick="next()">Next</button>
+
+<script>
+/* ---------------- WebSocket ---------------- */
+const ws = new WebSocket("ws://127.0.0.1:8000/ws/chat/");
+
+/* ---------------- WebRTC state ---------------- */
+let pc = null;
+let room = null;
+let isInitiator = false;
+let localStream = null;
+
+/* ---------------- Video elements ---------------- */
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+
+/* ---------------- Get camera ---------------- */
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+.then(stream => {
+  localStream = stream;
+  localVideo.srcObject = stream;
+})
+.catch(err => alert("Camera error: " + err));
+
+/* ---------------- Cleanup old call ---------------- */
+function cleanup() {
+  if (pc) {
+    pc.ontrack = null;
+    pc.onicecandidate = null;
+    pc.close();
+    pc = null;
+  }
+  remoteVideo.srcObject = null;
+  room = null;
+}
+
+/* ---------------- Join matchmaking queue ---------------- */
+function start() {
+  ws.send(JSON.stringify({ type: "start" }));
+}
+
+/* ---------------- Next user (Omegle-style) ---------------- */
+function next() {
+  cleanup();
+  ws.send(JSON.stringify({ type: "next" }));
+}
+
+/* ---------------- WebSocket messages ---------------- */
+ws.onmessage = async (e) => {
+  const data = JSON.parse(e.data);
+
+  /* ---- Matched ---- */
+  if (data.type === "matched") {
+    cleanup();
+
+    room = data.room;
+    isInitiator = data.initiator;
+
+    pc = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    localStream.getTracks().forEach(track =>
+      pc.addTrack(track, localStream)
+    );
+
+    pc.ontrack = e => {
+      remoteVideo.srcObject = e.streams[0];
+    };
+
+    pc.onicecandidate = e => {
+      if (e.candidate) {
+        ws.send(JSON.stringify({
+          room,
+          candidate: e.candidate
+        }));
+      }
+    };
+
+    if (isInitiator) {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      ws.send(JSON.stringify({ room, sdp: offer }));
+    }
+  }
+
+  /* ---- SDP signaling ---- */
+  if (data.sdp && pc) {
+    const desc = new RTCSessionDescription(data.sdp);
+
+    if (desc.type === "answer" && pc.signalingState !== "have-local-offer") return;
+    if (desc.type === "offer" && pc.signalingState !== "stable") return;
+
+    await pc.setRemoteDescription(desc);
+
+    if (desc.type === "offer") {
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      ws.send(JSON.stringify({ room, sdp: answer }));
+    }
+  }
+
+  /* ---- ICE ---- */
+  if (data.candidate && pc) {
+    await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+  }
+};
+</script>
+
+</body>
+</html>
