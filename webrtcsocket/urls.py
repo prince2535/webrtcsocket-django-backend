@@ -1,3 +1,6 @@
+from django.http import HttpResponse
 from django.urls import path
 
-urlpatterns = []
+urlpatterns = [
+    path("healthz", lambda r: HttpResponse("ok")),
+]
