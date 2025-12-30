@@ -3,9 +3,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "dev-secret-key"
+
+# ✅ Keep True for now (Render allows it)
 DEBUG = True
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+# 🔴 REQUIRED FOR RENDER
+ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -14,10 +17,10 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Enables WebSockets
+    # WebSocket support
     "channels",
 
-    # Our app
+    # Chat app
     "chat",
 ]
 
@@ -32,10 +35,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "webrtcsocket.urls"
 
-# 🔥 THIS IS CRITICAL
+# 🔥 CRITICAL: ASGI entry (WebSockets)
 ASGI_APPLICATION = "webrtcsocket.asgi.application"
 
-# ✅ In-memory channel layer (NO Redis)
+# ✅ In-memory channel layer (NO Redis, works on Render Free)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -43,4 +46,5 @@ CHANNEL_LAYERS = {
 }
 
 STATIC_URL = "static/"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
