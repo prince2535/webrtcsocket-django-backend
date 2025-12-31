@@ -2,20 +2,21 @@ import json
 import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-# Simple in-memory queue (OK for demo & interview)
+# Simple in-memory queue (OK for demo / interviews)
 waiting_users = []
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         await self.accept()
         self.room_name = None
-        print("CONNECTED", self.channel_name)
+        print("CONNECTED:", self.channel_name)
 
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        # 🔵 Start matchmaking
+        # 🔵 START: join matchmaking queue
         if data.get("type") == "start":
             if self not in waiting_users:
                 waiting_users.append(self)
@@ -26,10 +27,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 room = str(uuid.uuid4())
 
-                await user1.join_room(room, True)
-                await user2.join_room(room, False)
+                await user1.join_room(room, initiator=True)
+                await user2.join_room(room, initiator=False)
 
-        # 🔵 Next button → leave + requeue
+        # 🔵 NEXT: leave current room and requeue
         elif data.get("type") == "next":
             if self.room_name:
                 await self.channel_layer.group_discard(
@@ -47,10 +48,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 room = str(uuid.uuid4())
 
-                await user1.join_room(room, True)
-                await user2.join_room(room, False)
+                await user1.join_room(room, initiator=True)
+                await user2.join_room(room, initiator=False)
 
-        # 🔵 WebRTC signaling relay
+        # 🔵 WebRTC signaling relay (SDP / ICE)
         elif data.get("room"):
             await self.channel_layer.group_send(
                 data["room"],
@@ -87,4 +88,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-        print("DISCONNECTED", self.channel_name)
+        print("DISCONNECTED:", self.channel_name)
