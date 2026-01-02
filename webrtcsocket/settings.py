@@ -7,10 +7,11 @@ SECRET_KEY = "dev-secret-key"
 # ✅ Keep True for now (Render allows it)
 DEBUG = True
 
-# 🔴 REQUIRED FOR RENDER
+# 🔴 REQUIRED FOR RENDER (safe for now)
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
+    # Django core
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -20,8 +21,11 @@ INSTALLED_APPS = [
     # WebSocket support
     "channels",
 
-    # Chat app
+    # WebRTC chat app (DO NOT TOUCH)
     "chat",
+
+    # ✅ NEW: MongoDB auth app (HTTP only)
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -38,7 +42,7 @@ ROOT_URLCONF = "webrtcsocket.urls"
 # 🔥 CRITICAL: ASGI entry (WebSockets)
 ASGI_APPLICATION = "webrtcsocket.asgi.application"
 
-# ✅ In-memory channel layer (NO Redis, works on Render Free)
+# ✅ In-memory channel layer (NO Redis, safe on Render Free)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
