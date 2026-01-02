@@ -4,4 +4,4 @@ daphne
 uvicorn
 websockets
 pymongo
-bcrypt
+bcryptdjango-cors-headers
