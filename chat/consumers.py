@@ -2,7 +2,7 @@ import json
 import uuid
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-# Simple in-memory queue (OK for demo / interviews)
+# In-memory queue (OK for demo / interview)
 waiting_users = []
 
 
@@ -16,7 +16,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
 
-        # 🔵 START: join matchmaking queue
+        # 🔵 START matchmaking
         if data.get("type") == "start":
             if self not in waiting_users:
                 waiting_users.append(self)
@@ -30,7 +30,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await user1.join_room(room, initiator=True)
                 await user2.join_room(room, initiator=False)
 
-        # 🔵 NEXT: leave current room and requeue
+        # 🔵 NEXT (leave + requeue)
         elif data.get("type") == "next":
             if self.room_name:
                 await self.channel_layer.group_discard(
@@ -51,7 +51,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await user1.join_room(room, initiator=True)
                 await user2.join_room(room, initiator=False)
 
-        # 🔵 WebRTC signaling relay (SDP / ICE)
+        # 🔵 RELAY (WebRTC + Chat)
         elif data.get("room"):
             await self.channel_layer.group_send(
                 data["room"],
