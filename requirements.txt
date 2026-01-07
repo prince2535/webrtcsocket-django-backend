@@ -6,3 +6,4 @@ websockets
 pymongo
 bcrypt
 django-cors-headers
+python-dotenv
